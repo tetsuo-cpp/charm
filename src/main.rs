@@ -5,8 +5,10 @@ fn main() -> Result<(), String> {
     match args.get(1) {
         Some(file_name) => {
             let config = charm::Config::new(file_name);
-            charm::run(config).unwrap();
-            Ok(())
+            match charm::run(config) {
+                Ok(()) => Ok(()),
+                Err(e) => Err(format!("{}", e)),
+            }
         }
         None => Err(String::from("Usage: charm <file_name>")),
     }
