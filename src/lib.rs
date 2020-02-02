@@ -148,33 +148,35 @@ impl<'a> Lexer<'a> {
 mod tests {
     use super::*;
 
-    fn lex<'a>(source: &'a str) -> Vec<Token> {
+    fn lex<'a>(source: &'a str) -> Result<Vec<Token>, Box<dyn Error>> {
         let mut tokens = Vec::new();
         let mut lexer = Lexer::new(source);
         loop {
-            let token = lexer.lex().unwrap();
+            let token = lexer.lex()?;
             if token.is_eof() {
                 break;
             }
             tokens.push(token);
         }
-        tokens
+        Ok(tokens)
     }
 
     #[test]
-    fn test_lex_identifier() {
+    fn test_lex_identifier() -> Result<(), Box<dyn Error>> {
         assert_eq!(
-            lex("foo"),
+            lex("foo")?,
             vec![Token::new(TokenKind::Identifier, Some(b"foo"))]
         );
+        Ok(())
     }
 
     #[test]
-    fn test_lex_number() {
+    fn test_lex_number() -> Result<(), Box<dyn Error>> {
         assert_eq!(
-            lex("123"),
+            lex("123")?,
             vec![Token::new(TokenKind::Number, Some(b"123"))]
         );
+        Ok(())
     }
 }
 
