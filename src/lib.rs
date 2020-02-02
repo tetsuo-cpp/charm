@@ -168,6 +168,14 @@ mod tests {
             vec![Token::new(TokenKind::Identifier, Some(b"foo"))]
         );
     }
+
+    #[test]
+    fn test_lex_number() {
+        assert_eq!(
+            lex("123"),
+            vec![Token::new(TokenKind::Number, Some(b"123"))]
+        );
+    }
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
