@@ -183,7 +183,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let mut lexer = Lexer::new(&source);
     let mut tokens = Vec::new();
     loop {
-        let token = lexer.lex().unwrap();
+        let token = lexer.lex()?;
         if token.is_eof() {
             break;
         }
