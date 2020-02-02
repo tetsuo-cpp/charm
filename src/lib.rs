@@ -12,12 +12,14 @@ impl Config<'_> {
     }
 }
 
+#[derive(Debug, PartialEq)]
 enum TokenKind {
     Identifier,
     Number,
     EndOfFile,
 }
 
+#[derive(Debug, PartialEq)]
 struct Token<'a> {
     kind: TokenKind,
     value: Option<&'a [u8]>,
@@ -26,6 +28,14 @@ struct Token<'a> {
 impl Token<'_> {
     pub fn new(kind: TokenKind, value: Option<&[u8]>) -> Token {
         Token { kind, value }
+    }
+
+    pub fn is_eof(&self) -> bool {
+        if let TokenKind::EndOfFile = &self.kind {
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -48,7 +58,7 @@ struct Lexer<'a> {
     current_char: Option<&'a u8>,
 }
 
-impl Lexer<'_> {
+impl<'a> Lexer<'a> {
     pub fn new(source: &str) -> Lexer {
         let mut lexer = Lexer {
             source: source.as_bytes(),
@@ -59,7 +69,7 @@ impl Lexer<'_> {
         lexer
     }
 
-    pub fn lex(&mut self) -> Result<Token, Box<dyn Error>> {
+    pub fn lex(&mut self) -> Result<Token<'a>, Box<dyn Error>> {
         // Trim leading whitespace.
         loop {
             match self.current_char {
@@ -88,9 +98,8 @@ impl Lexer<'_> {
         }
     }
 
-    fn lex_number(&mut self) -> Result<Token, Box<dyn Error>> {
-        let start = self.current_pos;
-        let mut end = start;
+    fn lex_number(&mut self) -> Result<Token<'a>, Box<dyn Error>> {
+        let start = self.current_pos - 1;
         loop {
             match self.current_char {
                 Some(current_char) => {
@@ -100,30 +109,29 @@ impl Lexer<'_> {
                 }
                 None => break,
             }
-            end += 1;
             self.read_char();
         }
+        let end = self.current_pos - 1;
         Ok(Token::new(
             TokenKind::Number,
             Some(&self.source[start..end]),
         ))
     }
 
-    fn lex_identifier(&mut self) -> Result<Token, Box<dyn Error>> {
-        let start = self.current_pos;
-        let mut end = start;
+    fn lex_identifier(&mut self) -> Result<Token<'a>, Box<dyn Error>> {
+        let start = self.current_pos - 1;
         loop {
             match self.current_char {
                 Some(current_char) => {
-                    if current_char.is_ascii_alphanumeric() {
+                    if !current_char.is_ascii_alphanumeric() {
                         break;
                     }
                 }
                 None => break,
             }
-            end += 1;
             self.read_char();
         }
+        let end = self.current_pos - 1;
         Ok(Token::new(
             TokenKind::Identifier,
             Some(&self.source[start..end]),
@@ -132,11 +140,46 @@ impl Lexer<'_> {
 
     fn read_char(&mut self) {
         self.current_char = self.source.get(self.current_pos);
+        self.current_pos += 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn lex<'a>(source: &'a str) -> Vec<Token> {
+        let mut tokens = Vec::new();
+        let mut lexer = Lexer::new(source);
+        loop {
+            let token = lexer.lex().unwrap();
+            if token.is_eof() {
+                break;
+            }
+            tokens.push(token);
+        }
+        tokens
+    }
+
+    #[test]
+    fn test_lex_identifier() {
+        assert_eq!(
+            lex("foo"),
+            vec![Token::new(TokenKind::Identifier, Some(b"foo"))]
+        );
     }
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let source = fs::read_to_string(config.file_name)?;
-    let lexer = Lexer::new(&source);
+    let mut lexer = Lexer::new(&source);
+    let mut tokens = Vec::new();
+    loop {
+        let token = lexer.lex().unwrap();
+        if token.is_eof() {
+            break;
+        }
+        tokens.push(token);
+    }
     Ok(())
 }
