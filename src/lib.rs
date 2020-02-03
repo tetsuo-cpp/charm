@@ -65,7 +65,7 @@ impl<'a> Lexer<'a> {
             current_pos: 0,
             current_char: None,
         };
-        lexer.read_char();
+        lexer.position_char();
         lexer
     }
 
@@ -99,7 +99,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_number(&mut self) -> Result<Token<'a>, Box<dyn Error>> {
-        let start = self.current_pos - 1;
+        let start = self.current_pos;
         loop {
             match self.current_char {
                 Some(current_char) => {
@@ -111,7 +111,7 @@ impl<'a> Lexer<'a> {
             }
             self.read_char();
         }
-        let end = self.current_pos - 1;
+        let end = self.current_pos;
         Ok(Token::new(
             TokenKind::Number,
             Some(&self.source[start..end]),
@@ -119,7 +119,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_identifier(&mut self) -> Result<Token<'a>, Box<dyn Error>> {
-        let start = self.current_pos - 1;
+        let start = self.current_pos;
         loop {
             match self.current_char {
                 Some(current_char) => {
@@ -131,7 +131,7 @@ impl<'a> Lexer<'a> {
             }
             self.read_char();
         }
-        let end = self.current_pos - 1;
+        let end = self.current_pos;
         Ok(Token::new(
             TokenKind::Identifier,
             Some(&self.source[start..end]),
@@ -139,8 +139,12 @@ impl<'a> Lexer<'a> {
     }
 
     fn read_char(&mut self) {
-        self.current_char = self.source.get(self.current_pos);
         self.current_pos += 1;
+        self.position_char();
+    }
+
+    fn position_char(&mut self) {
+        self.current_char = self.source.get(self.current_pos);
     }
 }
 
