@@ -12,14 +12,16 @@ impl Config<'_> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum TokenKind {
     Identifier,
     Number,
+    If,
+    Else,
     EndOfFile,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 struct Token<'a> {
     kind: TokenKind,
     value: Option<&'a [u8]>,
@@ -51,6 +53,23 @@ impl fmt::Display for LexerError {
         write!(f, "{}", self.msg)
     }
 }
+
+static KEYWORDS: [(&'static [u8], Token); 2] = [
+    (
+        b"if",
+        Token {
+            kind: TokenKind::If,
+            value: None,
+        },
+    ),
+    (
+        b"else",
+        Token {
+            kind: TokenKind::Else,
+            value: None,
+        },
+    ),
+];
 
 struct Lexer<'a> {
     source: &'a [u8],
@@ -88,6 +107,8 @@ impl<'a> Lexer<'a> {
                     self.lex_number()
                 } else if current_char.is_ascii_alphabetic() {
                     self.lex_identifier()
+                } else if current_char.is_ascii() {
+                    self.lex_symbol()
                 } else {
                     Err(Box::new(LexerError {
                         msg: String::from("unrecognised token"),
@@ -132,10 +153,17 @@ impl<'a> Lexer<'a> {
             self.read_char();
         }
         let end = self.current_pos;
-        Ok(Token::new(
-            TokenKind::Identifier,
-            Some(&self.source[start..end]),
-        ))
+        let value = &self.source[start..end];
+        for (kw, kw_tok) in KEYWORDS.iter() {
+            if *kw == value {
+                return Ok(kw_tok.clone());
+            }
+        }
+        Ok(Token::new(TokenKind::Identifier, Some(value)))
+    }
+
+    fn lex_symbol(&mut self) -> Result<Token<'a>, Box<dyn Error>> {
+        Ok(Token::new(TokenKind::EndOfFile, None))
     }
 
     fn read_char(&mut self) {
@@ -180,6 +208,12 @@ mod tests {
             lex("123")?,
             vec![Token::new(TokenKind::Number, Some(b"123"))]
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_lex_if() -> Result<(), Box<dyn Error>> {
+        assert_eq!(lex("if")?, vec![Token::new(TokenKind::If, None)]);
         Ok(())
     }
 }
