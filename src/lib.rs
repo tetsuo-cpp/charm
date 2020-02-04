@@ -29,13 +29,14 @@ enum TokenKind {
     LessThan,
     GreaterThanEqual,
     LessThanEqual,
+    Assign,
     EndOfFile,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 struct Token<'a> {
-    kind: TokenKind,
-    value: Option<&'a [u8]>,
+    pub kind: TokenKind,
+    pub value: Option<&'a [u8]>,
 }
 
 impl Token<'_> {
@@ -61,7 +62,7 @@ impl Error for LexerError {}
 
 impl fmt::Display for LexerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.msg)
+        write!(f, "LexerError: {}", self.msg)
     }
 }
 
@@ -89,7 +90,7 @@ static KEYWORDS: [(&'static [u8], Token); 3] = [
     ),
 ];
 
-static SYMBOLS: [(&'static [u8], Token); 10] = [
+static SYMBOLS: [(&'static [u8], Token); 11] = [
     (
         b"(",
         Token {
@@ -157,6 +158,13 @@ static SYMBOLS: [(&'static [u8], Token); 10] = [
         b"<=",
         Token {
             kind: TokenKind::LessThanEqual,
+            value: None,
+        },
+    ),
+    (
+        b"=",
+        Token {
+            kind: TokenKind::Assign,
             value: None,
         },
     ),
@@ -355,6 +363,89 @@ mod tests {
             vec![Token::new(TokenKind::Identifier, Some(b"foo123"))]
         );
         Ok(())
+    }
+}
+
+enum Ast<'a> {
+    If(IfNode<'a>),
+    VarDecl(VarDeclNode<'a>),
+}
+
+struct IfNode<'a> {
+    condition: Box<Ast<'a>>,
+    then_block: Vec<Ast<'a>>,
+    else_block: Vec<Ast<'a>>,
+}
+
+struct VarDeclNode<'a> {
+    name: &'a [u8],
+    rhs: Box<Option<Ast<'a>>>,
+}
+
+#[derive(Debug)]
+struct ParserError {
+    msg: String,
+}
+
+impl Error for ParserError {}
+
+impl fmt::Display for ParserError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ParserError: {}", self.msg)
+    }
+}
+
+struct Parser<'a> {
+    lexer: Lexer<'a>,
+    cur_tok: Token<'a>,
+}
+
+impl Parser<'_> {
+    pub fn new(lexer: Lexer) -> Parser {
+        Parser {
+            lexer,
+            cur_tok: Token::new(TokenKind::EndOfFile, None),
+        }
+    }
+
+    pub fn parse_top_level_expr(&mut self) -> Result<Box<Ast>, Box<dyn Error>> {
+        if self.consume_token(&TokenKind::Var)? {
+            self.parse_var_decl()
+        } else {
+            Err(Box::new(ParserError {
+                msg: String::from("parsing error"),
+            }))
+        }
+    }
+
+    fn parse_var_decl(&mut self) -> Result<Box<Ast>, Box<dyn Error>> {
+        let var_name = self.cur_tok.value.unwrap();
+        self.assert_token(&TokenKind::Identifier)?;
+        self.assert_token(&TokenKind::Assign)?;
+        // Should parse the rhs expr here.
+        Ok(Box::new(Ast::VarDecl(VarDeclNode {
+            name: var_name,
+            rhs: Box::new(None),
+        })))
+    }
+
+    fn consume_token(&mut self, kind: &TokenKind) -> Result<bool, Box<dyn Error>> {
+        if self.cur_tok.kind == *kind {
+            self.lexer.lex()?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn assert_token(&mut self, kind: &TokenKind) -> Result<(), Box<dyn Error>> {
+        if !self.consume_token(kind)? {
+            Err(Box::new(ParserError {
+                msg: format!("expected kind {:?} but got {:?}", kind, self.cur_tok.kind),
+            }))
+        } else {
+            Ok(())
+        }
     }
 }
 
