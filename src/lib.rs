@@ -18,6 +18,8 @@ enum TokenKind {
     Number,
     If,
     Else,
+    OpenParen,
+    CloseParen,
     EndOfFile,
 }
 
@@ -66,6 +68,23 @@ static KEYWORDS: [(&'static [u8], Token); 2] = [
         b"else",
         Token {
             kind: TokenKind::Else,
+            value: None,
+        },
+    ),
+];
+
+static SYMBOLS: [(&'static [u8], Token); 2] = [
+    (
+        b"(",
+        Token {
+            kind: TokenKind::OpenParen,
+            value: None,
+        },
+    ),
+    (
+        b")",
+        Token {
+            kind: TokenKind::CloseParen,
             value: None,
         },
     ),
@@ -163,7 +182,28 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_symbol(&mut self) -> Result<Token<'a>, Box<dyn Error>> {
-        Ok(Token::new(TokenKind::EndOfFile, None))
+        let start = self.current_pos;
+        loop {
+            match self.current_char {
+                Some(current_char) => {
+                    if current_char.is_ascii_alphanumeric() {
+                        break;
+                    }
+                }
+                None => break,
+            }
+            self.read_char();
+        }
+        let end = self.current_pos;
+        let value = &self.source[start..end];
+        for (sym, sym_tok) in SYMBOLS.iter() {
+            if *sym == value {
+                return Ok(sym_tok.clone());
+            }
+        }
+        Err(Box::new(LexerError {
+            msg: String::from("unrecognised symbol"),
+        }))
     }
 
     fn read_char(&mut self) {
@@ -218,6 +258,19 @@ mod tests {
             vec![
                 Token::new(TokenKind::If, None),
                 Token::new(TokenKind::Else, None)
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_lex_sym() -> Result<(), Box<dyn Error>> {
+        assert_eq!(
+            lex("(foo)")?,
+            vec![
+                Token::new(TokenKind::OpenParen, None),
+                Token::new(TokenKind::Identifier, Some(b"foo")),
+                Token::new(TokenKind::CloseParen, None),
             ]
         );
         Ok(())
