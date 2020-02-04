@@ -18,8 +18,17 @@ enum TokenKind {
     Number,
     If,
     Else,
+    Var,
     OpenParen,
     CloseParen,
+    OpenBrace,
+    CloseBrace,
+    Equal,
+    NotEqual,
+    GreaterThan,
+    LessThan,
+    GreaterThanEqual,
+    LessThanEqual,
     EndOfFile,
 }
 
@@ -56,7 +65,7 @@ impl fmt::Display for LexerError {
     }
 }
 
-static KEYWORDS: [(&'static [u8], Token); 2] = [
+static KEYWORDS: [(&'static [u8], Token); 3] = [
     (
         b"if",
         Token {
@@ -71,9 +80,16 @@ static KEYWORDS: [(&'static [u8], Token); 2] = [
             value: None,
         },
     ),
+    (
+        b"var",
+        Token {
+            kind: TokenKind::Var,
+            value: None,
+        },
+    ),
 ];
 
-static SYMBOLS: [(&'static [u8], Token); 2] = [
+static SYMBOLS: [(&'static [u8], Token); 10] = [
     (
         b"(",
         Token {
@@ -85,6 +101,62 @@ static SYMBOLS: [(&'static [u8], Token); 2] = [
         b")",
         Token {
             kind: TokenKind::CloseParen,
+            value: None,
+        },
+    ),
+    (
+        b"{",
+        Token {
+            kind: TokenKind::OpenBrace,
+            value: None,
+        },
+    ),
+    (
+        b"}",
+        Token {
+            kind: TokenKind::CloseBrace,
+            value: None,
+        },
+    ),
+    (
+        b"==",
+        Token {
+            kind: TokenKind::Equal,
+            value: None,
+        },
+    ),
+    (
+        b"!=",
+        Token {
+            kind: TokenKind::NotEqual,
+            value: None,
+        },
+    ),
+    (
+        b">",
+        Token {
+            kind: TokenKind::GreaterThan,
+            value: None,
+        },
+    ),
+    (
+        b"<",
+        Token {
+            kind: TokenKind::LessThan,
+            value: None,
+        },
+    ),
+    (
+        b">=",
+        Token {
+            kind: TokenKind::GreaterThanEqual,
+            value: None,
+        },
+    ),
+    (
+        b"<=",
+        Token {
+            kind: TokenKind::LessThanEqual,
             value: None,
         },
     ),
