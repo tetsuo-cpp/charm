@@ -364,6 +364,20 @@ mod tests {
         );
         Ok(())
     }
+
+    fn parse<'a>(source: &'a str) -> Result<Vec<Box<Ast>>, Box<dyn Error>> {
+        let mut exprs = Vec::new();
+        let mut lexer = Lexer::new(source);
+        let mut parser = Parser::new(lexer);
+        loop {
+            let expr = parser.parse_top_level_expr()?;
+            match expr {
+                Some(ast) => exprs.push(ast),
+                None => break,
+            }
+        }
+        Ok(exprs)
+    }
 }
 
 enum Ast<'a> {
@@ -400,7 +414,7 @@ struct Parser<'a> {
     cur_tok: Token<'a>,
 }
 
-impl Parser<'_> {
+impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer) -> Parser {
         Parser {
             lexer,
@@ -408,17 +422,20 @@ impl Parser<'_> {
         }
     }
 
-    pub fn parse_top_level_expr(&mut self) -> Result<Box<Ast>, Box<dyn Error>> {
+    pub fn parse_top_level_expr(&mut self) -> Result<Option<Box<Ast<'a>>>, Box<dyn Error>> {
         if self.consume_token(&TokenKind::Var)? {
-            self.parse_var_decl()
+            // Gross. Refactor the types here.
+            let var_decl = self.parse_var_decl();
+            match var_decl {
+                Ok(var_decl) => Ok(Some(var_decl)),
+                Err(error) => Err(error),
+            }
         } else {
-            Err(Box::new(ParserError {
-                msg: String::from("parsing error"),
-            }))
+            Ok(None)
         }
     }
 
-    fn parse_var_decl(&mut self) -> Result<Box<Ast>, Box<dyn Error>> {
+    fn parse_var_decl(&mut self) -> Result<Box<Ast<'a>>, Box<dyn Error>> {
         let var_name = self.cur_tok.value.unwrap();
         self.assert_token(&TokenKind::Identifier)?;
         self.assert_token(&TokenKind::Assign)?;
