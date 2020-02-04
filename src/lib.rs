@@ -275,6 +275,15 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn test_lex_identifiers_with_digits() -> Result<(), Box<dyn Error>> {
+        assert_eq!(
+            lex("foo123")?,
+            vec![Token::new(TokenKind::Identifier, Some(b"foo123"))]
+        );
+        Ok(())
+    }
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
