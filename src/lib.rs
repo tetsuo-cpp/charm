@@ -212,8 +212,14 @@ mod tests {
     }
 
     #[test]
-    fn test_lex_if() -> Result<(), Box<dyn Error>> {
-        assert_eq!(lex("if")?, vec![Token::new(TokenKind::If, None)]);
+    fn test_lex_kw() -> Result<(), Box<dyn Error>> {
+        assert_eq!(
+            lex("if else")?,
+            vec![
+                Token::new(TokenKind::If, None),
+                Token::new(TokenKind::Else, None)
+            ]
+        );
         Ok(())
     }
 }
