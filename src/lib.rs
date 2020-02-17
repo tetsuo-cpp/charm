@@ -31,6 +31,10 @@ enum TokenKind {
     LessThanEqual,
     Assign,
     EndOfFile,
+    Addition,
+    Subtraction,
+    Multiplication,
+    Division,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -90,7 +94,7 @@ static KEYWORDS: [(&'static [u8], Token); 3] = [
     ),
 ];
 
-static SYMBOLS: [(&'static [u8], Token); 11] = [
+static SYMBOLS: [(&'static [u8], Token); 15] = [
     (
         b"(",
         Token {
@@ -165,6 +169,34 @@ static SYMBOLS: [(&'static [u8], Token); 11] = [
         b"=",
         Token {
             kind: TokenKind::Assign,
+            value: None,
+        },
+    ),
+    (
+        b"+",
+        Token {
+            kind: TokenKind::Addition,
+            value: None,
+        },
+    ),
+    (
+        b"-",
+        Token {
+            kind: TokenKind::Subtraction,
+            value: None,
+        },
+    ),
+    (
+        b"*",
+        Token {
+            kind: TokenKind::Multiplication,
+            value: None,
+        },
+    ),
+    (
+        b"/",
+        Token {
+            kind: TokenKind::Division,
             value: None,
         },
     ),
@@ -383,6 +415,7 @@ mod tests {
 enum Ast<'a> {
     If(IfNode<'a>),
     VarDecl(VarDeclNode<'a>),
+    BinOp(BinOpNode<'a>),
 }
 
 struct IfNode<'a> {
@@ -394,6 +427,12 @@ struct IfNode<'a> {
 struct VarDeclNode<'a> {
     name: &'a [u8],
     rhs: Box<Option<Ast<'a>>>,
+}
+
+struct BinOpNode<'a> {
+    op: Token<'a>,
+    lhs: Box<Ast<'a>>,
+    rhs: Box<Ast<'a>>,
 }
 
 #[derive(Debug)]
@@ -446,6 +485,34 @@ impl<'a> Parser<'a> {
         })))
     }
 
+    fn parse_expr(&mut self) -> Result<Box<Ast<'a>>, Box<dyn Error>> {
+        self.parse_addition()
+    }
+
+    fn parse_addition(&mut self) -> Result<Box<Ast<'a>>, Box<dyn Error>> {
+        let mut lhs = self.parse_multiplication()?;
+        loop {
+            let prev_tok = self.cur_tok.clone();
+            if self.consume_token(&TokenKind::Addition)?
+                || self.consume_token(&TokenKind::Subtraction)?
+            {
+                lhs = Box::new(Ast::BinOp(BinOpNode {
+                    op: prev_tok,
+                    lhs,
+                    rhs: self.parse_multiplication()?,
+                }))
+            } else {
+                return Ok(lhs);
+            }
+        }
+    }
+
+    fn parse_multiplication(&mut self) -> Result<Box<Ast<'a>>, Box<dyn Error>> {
+        Err(Box::new(ParserError {
+            msg: format!("blah"),
+        }))
+    }
+
     fn consume_token(&mut self, kind: &TokenKind) -> Result<bool, Box<dyn Error>> {
         if self.cur_tok.kind == *kind {
             self.lexer.lex()?;
@@ -476,6 +543,15 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
             break;
         }
         tokens.push(token);
+    }
+    let mut parser = Parser::new(lexer);
+    let mut top_level_exprs = Vec::new();
+    loop {
+        let ast = parser.parse_top_level_expr()?;
+        match ast {
+            Some(ast) => top_level_exprs.push(ast),
+            None => break,
+        }
     }
     Ok(())
 }
